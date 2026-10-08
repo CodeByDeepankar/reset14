@@ -1,0 +1,7 @@
+{
+  "name": "RESET 14 - 14 Days. Less Noise. More Control.",
+  "description": "A 14-day personal reset operating system to eliminate distractions, manage cravings, master daily protocols, and build unshakable focus.",
+  "requestFramePermissions": ["notifications"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

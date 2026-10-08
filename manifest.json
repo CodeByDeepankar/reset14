@@ -1,0 +1,17 @@
+{
+  "name": "RESET 14",
+  "short_name": "RESET 14",
+  "description": "14 Days. Less Noise. More Control. Personal Reset Operating System.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#08090C",
+  "theme_color": "#08090C",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
