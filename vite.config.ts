@@ -2,10 +2,35 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [
+      react(), 
+      tailwindcss(),
+      VitePWA({
+        registerType: 'autoUpdate',
+        includeAssets: ['icon.svg'],
+        manifest: {
+          name: "RESET 14",
+          short_name: "RESET 14",
+          description: "14 Days. Less Noise. More Control. Personal Reset Operating System.",
+          start_url: "/",
+          display: "standalone",
+          background_color: "#08090C",
+          theme_color: "#08090C",
+          orientation: "portrait",
+          icons: [
+            {
+              src: "/icon.svg",
+              sizes: "192x192 512x512",
+              type: "image/svg+xml"
+            }
+          ]
+        }
+      })
+    ],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

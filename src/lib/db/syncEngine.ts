@@ -82,7 +82,46 @@ export const syncEngine = {
     }
     localStorage.setItem('reset14_db_habits', JSON.stringify(habits));
 
-    // For brevity, we could do this for all tables, but this gets the main dashboard going with real user data!
+    // 6. Fetch other array tables
+    const arrayTables = ['subjects', 'study_sessions', 'distraction_logs', 'growth_goals', 'growth_sessions', 'notifications', 'cravings'];
+    for (const table of arrayTables) {
+      const { data } = await supabase.from(table).select('*').eq('user_id', userId);
+      if (data && data.length > 0) {
+        localStorage.setItem(`reset14_db_${table}`, JSON.stringify(data));
+      }
+    }
+
+    // 7. Fetch Workouts & Exercises
+    const { data: workouts } = await supabase.from('workouts').select('*, workout_exercises(*)').eq('user_id', userId);
+    if (workouts && workouts.length > 0) {
+      const wList = workouts.map((w: any) => {
+        const { workout_exercises, ...rest } = w;
+        return { ...rest, exercises: workout_exercises };
+      });
+      localStorage.setItem('reset14_db_workouts', JSON.stringify(wList));
+    }
+
+    // 8. Fetch date-keyed single object tables
+    const dateTables = ['water_logs', 'sleep_logs', 'mood_entries', 'journal_entries'];
+    for (const table of dateTables) {
+      const { data } = await supabase.from(table).select('*').eq('user_id', userId);
+      if (data && data.length > 0) {
+        const map: any = {};
+        data.forEach((d: any) => map[d.date] = d);
+        localStorage.setItem(`reset14_db_${table}`, JSON.stringify(map));
+      }
+    }
+
+    // 9. Fetch habit logs (double keyed: date -> habit_id -> log)
+    const { data: habitLogs } = await supabase.from('habit_logs').select('*').eq('user_id', userId);
+    if (habitLogs && habitLogs.length > 0) {
+      const hMap: any = {};
+      habitLogs.forEach((l: any) => {
+        if (!hMap[l.date]) hMap[l.date] = {};
+        hMap[l.date][l.habit_id] = l;
+      });
+      localStorage.setItem('reset14_db_habit_logs_by_date', JSON.stringify(hMap));
+    }
     
     // Notify store subscribers so React re-renders with the real data
     (db as any).notify();
@@ -91,33 +130,42 @@ export const syncEngine = {
   async push(key: string, value: any) {
     if (!supabase) return;
     
-    // Quick mapper from localStorage keys to Supabase tables
-    // This is a naive implementation that just upserts the whole array or object
     try {
       if (key === 'profile') {
         await supabase.from('profiles').upsert(value);
-      } else if (key === 'challenge_days' && Array.isArray(value)) {
-        for (const day of value) {
-          await supabase.from('challenge_days').upsert(day);
+      } else if (['challenge_days', 'goals', 'habits', 'subjects', 'study_sessions', 'distraction_logs', 'growth_goals', 'growth_sessions', 'notifications', 'cravings'].includes(key)) {
+        const table = key === 'goals' ? 'user_goals' : key;
+        if (Array.isArray(value)) {
+          for (const item of value) {
+            await supabase.from(table).upsert(item);
+          }
         }
-      } else if (key === 'protocols_by_date') {
-        const allProtocols = Object.values(value).flat();
-        if (allProtocols.length > 0) {
-            for (const p of allProtocols as any) {
-                await supabase.from('daily_protocols').upsert(p);
+      } else if (['protocols_by_date', 'habit_logs_by_date'].includes(key)) {
+        const table = key === 'protocols_by_date' ? 'daily_protocols' : 'habit_logs';
+        const items = Object.values(value).map(obj => Array.isArray(obj) ? obj : Object.values(obj as any)).flat();
+        if (items.length > 0) {
+          for (const i of items as any) {
+            await supabase.from(table).upsert(i);
+          }
+        }
+      } else if (['water_logs', 'sleep_logs', 'mood_entries', 'journal_entries'].includes(key)) {
+        const items = Object.values(value);
+        if (items.length > 0) {
+          for (const i of items as any) {
+            await supabase.from(key).upsert(i);
+          }
+        }
+      } else if (key === 'workouts' && Array.isArray(value)) {
+        for (const w of value) {
+          const { exercises, ...workoutData } = w;
+          await supabase.from('workouts').upsert(workoutData);
+          if (exercises && Array.isArray(exercises)) {
+            for (const ex of exercises) {
+              await supabase.from('workout_exercises').upsert(ex);
             }
-        }
-      } else if (key === 'habits' && Array.isArray(value)) {
-        for (const h of value) {
-          await supabase.from('habits').upsert(h);
-        }
-      } else if (key === 'habit_logs_by_date') {
-        const logs = Object.values(value).map(obj => Object.values(obj as any)).flat();
-        for (const l of logs as any) {
-          await supabase.from('habit_logs').upsert(l);
+          }
         }
       }
-      // Add other tables as needed...
     } catch (e) {
       console.error('Supabase Sync Push Error:', e);
     }
